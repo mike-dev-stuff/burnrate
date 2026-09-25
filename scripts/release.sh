@@ -243,14 +243,14 @@ info "[8/8] Generating appcast.xml..."
 APPCAST_PATH="$REPO_ROOT/appcast.xml"
 FILE_SIZE=$(stat -f%z "$DIST_ZIP")
 PUB_DATE=$(date -u +"%a, %d %b %Y %H:%M:%S GMT")
-DOWNLOAD_URL="https://github.com/wrnsnng/burnrate/releases/download/v$VERSION/Burnrate-$VERSION.zip"
+DOWNLOAD_URL="https://github.com/mike-dev-stuff/burnrate/releases/download/v$VERSION/Burnrate-$VERSION.zip"
 
 cat > "$APPCAST_PATH" << EOF
 <?xml version="1.0" encoding="utf-8"?>
 <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" xmlns:dc="http://purl.org/dc/elements/1.1/">
   <channel>
     <title>Burnrate Updates</title>
-    <link>https://github.com/wrnsnng/burnrate/releases</link>
+    <link>https://github.com/mike-dev-stuff/burnrate/releases</link>
     <description>Most recent updates to Burnrate</description>
     <language>en</language>
     <item>

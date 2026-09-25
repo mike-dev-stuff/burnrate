@@ -2,21 +2,9 @@
 <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" xmlns:dc="http://purl.org/dc/elements/1.1/">
   <channel>
     <title>Burnrate Updates</title>
-    <link>https://github.com/wrnsnng/burnrate/releases</link>
-    <description>Most recent updates to Burnrate</description>
+    <link>https://github.com/mike-dev-stuff/burnrate/releases</link>
+    <description>Updates for the mike-dev-stuff fork of Burnrate</description>
     <language>en</language>
-    <item>
-      <title>Version 0.2.0-beta</title>
-      <pubDate>Sun, 08 Feb 2026 05:39:17 GMT</pubDate>
-      <sparkle:version>0.2.0-beta</sparkle:version>
-      <sparkle:shortVersionString>0.2.0-beta</sparkle:shortVersionString>
-      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-      <enclosure
-        url="https://github.com/wrnsnng/burnrate/releases/download/v0.2.0-beta/Burnrate-0.2.0-beta.zip"
-        length="1841365"
-        type="application/octet-stream"
-        sparkle:edSignature="ENmHpZpGj7WVtQW5FZLj44mGp9RW8ystvHlOKNsBex7S21tJbVyAN2wMYwzoPPLCl5pZWN/aENcfumr/9vLZCQ=="
-      />
-    </item>
+    <!-- Add entries only after this fork has its own signed release artifacts. -->
   </channel>
 </rss>

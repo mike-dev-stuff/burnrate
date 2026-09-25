@@ -15,9 +15,9 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>0.2.0-beta</string>
+	<string>0.2.1-beta</string>
 	<key>CFBundleVersion</key>
-	<string>0.2.0-beta</string>
+	<string>0.2.1-beta</string>
 	<key>LSApplicationCategoryType</key>
 	<string>public.app-category.utilities</string>
 	<key>LSMinimumSystemVersion</key>
@@ -27,10 +27,6 @@
 	<key>NSHighResolutionCapable</key>
 	<true/>
 	<key>SUEnableAutomaticChecks</key>
-	<true/>
-	<key>SUFeedURL</key>
-	<string>https://raw.githubusercontent.com/wrnsnng/burnrate/master/appcast.xml</string>
-	<key>SUPublicEDKey</key>
-	<string>apOw6+icVsAh8Emfd1cwAkndoeAV71+anDE/w6rkZM8=</string>
+	<false/>
 </dict>
 </plist>

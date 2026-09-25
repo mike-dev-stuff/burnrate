@@ -619,7 +619,7 @@ struct AboutTab: View {
 
             // Credits
             VStack(spacing: 4) {
-                Text("Made by")
+                Text("Originally created by")
                     .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(BurnrateTheme.textTertiary)
 
@@ -632,12 +632,15 @@ struct AboutTab: View {
                     Link("Rich Sison", destination: URL(string: "https://www.richardsison.com")!)
                         .font(.system(size: 13, weight: .semibold))
                 }
+
+                Link("Original project: wrnsnng/burnrate", destination: URL(string: "https://github.com/wrnsnng/burnrate")!)
+                    .font(.system(size: 11, weight: .medium))
             }
 
             // Action buttons
             HStack(spacing: 12) {
                 // GitHub link
-                Link(destination: URL(string: "https://github.com/wrnsnng/burnrate")!) {
+                Link(destination: URL(string: "https://github.com/mike-dev-stuff/burnrate")!) {
                     HStack(spacing: 6) {
                         Image(systemName: "arrow.up.right.square.fill")
                             .font(.system(size: 12, weight: .medium))
@@ -654,7 +657,7 @@ struct AboutTab: View {
                 }
                 .buttonStyle(.plain)
 
-                // Check for updates button
+                // Available once this fork has its own signed update feed.
                 Button {
                     if let appDelegate = NSApp.delegate as? AppDelegate {
                         appDelegate.checkForUpdates()
@@ -675,6 +678,8 @@ struct AboutTab: View {
                     )
                 }
                 .buttonStyle(.plain)
+                .disabled((NSApp.delegate as? AppDelegate)?.canCheckForUpdates != true)
+                .help("Automatic updates aren't available yet. Visit GitHub for new releases.")
             }
 
             Spacer()

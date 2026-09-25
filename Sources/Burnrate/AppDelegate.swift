@@ -13,16 +13,23 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     // Sparkle updater controller (only available when running as bundled .app)
     private var updaterController: SPUStandardUpdaterController?
 
+    var canCheckForUpdates: Bool {
+        updaterController != nil
+    }
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSLog("[DEBUG] applicationDidFinishLaunching started")
 
-        // Only initialize Sparkle when running as a bundled app
-        // (Sparkle requires proper app bundle structure to function)
-        if Bundle.main.bundlePath.hasSuffix(".app") {
+        // Forks need their own update feed and signing key before enabling Sparkle.
+        let updateFeed = Bundle.main.object(forInfoDictionaryKey: "SUFeedURL") as? String
+        let updateKey = Bundle.main.object(forInfoDictionaryKey: "SUPublicEDKey") as? String
+        if Bundle.main.bundlePath.hasSuffix(".app"),
+           let updateFeed, !updateFeed.isEmpty,
+           let updateKey, !updateKey.isEmpty {
             updaterController = SPUStandardUpdaterController(startingUpdater: true, updaterDelegate: nil, userDriverDelegate: nil)
             NSLog("[DEBUG] Sparkle updater initialized")
         } else {
-            NSLog("[DEBUG] Skipping Sparkle - not running from app bundle")
+            NSLog("[DEBUG] Skipping Sparkle - app bundle or update configuration unavailable")
         }
 
         // Request notification permissions

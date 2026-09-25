@@ -3,16 +3,18 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/wrnsnng/burnrate/releases/latest">
+  <a href="https://github.com/mike-dev-stuff/burnrate/releases">
     <img src="https://img.shields.io/badge/Download-Latest%20Release-blue?style=for-the-badge&logo=apple" alt="Download">
   </a>
 </p>
 
 # Burnrate
 
-A macOS menubar app that displays your Claude Code usage statistics in real-time.
+A macOS menubar app that displays your Claude Code and Codex usage statistics in real time.
 
-Built by [Common Tools co.](https://common-tools.co) & [Rich Sison](https://www.richardsison.com/)
+This is a customized fork of [wrnsnng/burnrate](https://github.com/wrnsnng/burnrate), originally created by [Common Tools Co.](https://common-tools.co) and [Rich Sison](https://www.richardsison.com/). Their work provides the app's foundation, design, and usage tracking. See [CREDITS.md](CREDITS.md) for attribution.
+
+Version **0.2.1-beta** simplifies the provider menu to Claude and Codex and uses a flame menu bar icon. See the [release notes](_releasenotes/v0.2.1-beta.md).
 
 ## Features
 
@@ -34,18 +36,20 @@ Built by [Common Tools co.](https://common-tools.co) & [Rich Sison](https://www.
 
 ### Option 1: Download Release (Recommended)
 
-Download the latest `Burnrate.zip` from [Releases](https://github.com/wrnsnng/burnrate/releases), unzip, and move to Applications.
+Download a build from this fork's [Releases](https://github.com/mike-dev-stuff/burnrate/releases), when available, unzip, and move Burnrate to Applications. Local builds are signed for local use and are not notarized.
+
+Automatic updates are disabled until this fork has its own signed update feed.
 
 ### Option 2: Build from Source
 
 ```bash
 # Clone the repository
-git clone https://github.com/wrnsnng/burnrate.git
+git clone https://github.com/mike-dev-stuff/burnrate.git
 cd burnrate
 
-# Build and run
-swift build
-swift run
+# Build and run a release (works with the Swift command-line tools)
+swift build -c release
+swift run -c release
 ```
 
 To create a distributable .app bundle:
@@ -54,13 +58,18 @@ To create a distributable .app bundle:
 # Build release
 swift build -c release
 
-# Create app bundle
-mkdir -p "Burnrate.app/Contents/MacOS"
-cp .build/release/Burnrate "Burnrate.app/Contents/MacOS/"
-cp Resources/Info.plist "Burnrate.app/Contents/"
+# Create app bundle, including the icon and Sparkle framework
+mkdir -p dist/Burnrate.app/Contents/{MacOS,Resources,Frameworks}
+cp .build/release/Burnrate dist/Burnrate.app/Contents/MacOS/
+cp Resources/Info.plist dist/Burnrate.app/Contents/
+cp Resources/AppIcon.icns dist/Burnrate.app/Contents/Resources/
+ditto .build/artifacts/sparkle/Sparkle/Sparkle.xcframework/macos-arm64_x86_64/Sparkle.framework dist/Burnrate.app/Contents/Frameworks/Sparkle.framework
+install_name_tool -add_rpath @executable_path/../Frameworks dist/Burnrate.app/Contents/MacOS/Burnrate
 
-# Zip for distribution
-zip -r "Burnrate.zip" "Burnrate.app"
+# Sign for local use and package
+codesign --force --sign - --entitlements Resources/Burnrate.entitlements dist/Burnrate.app
+codesign --verify --deep --strict dist/Burnrate.app
+ditto -c -k --keepParent dist/Burnrate.app dist/Burnrate-0.2.1-beta.zip
 ```
 
 ## Project Structure
@@ -121,7 +130,7 @@ Key files:
 - `Services/AnalyticsStore.swift` - Persists usage snapshots and daily stats
 - `Services/NotificationService.swift` - Handles macOS notifications for alerts
 
-To modify the UI, edit files in `Views/`. The app uses standard SwiftUI components.
+To modify the UI, edit files in `Views/`. The app uses standard SwiftUI components. Debug builds include design-time previews and require the full Xcode toolchain; release builds can use the Swift command-line tools.
 
 ### Debugging
 
@@ -149,5 +158,7 @@ Logs are printed to stderr with `[DEBUG]` prefix.
 MIT License - feel free to use and modify as needed.
 
 ## Acknowledgments
+
+Thanks to [Common Tools Co.](https://common-tools.co), [Rich Sison](https://www.richardsison.com/), and the [upstream contributors](https://github.com/wrnsnng/burnrate/graphs/contributors) for creating and maintaining the original Burnrate project. Upstream Git history and author credits are preserved in this fork.
 
 Built with [Claude Code](https://claude.ai/code) assistance.
