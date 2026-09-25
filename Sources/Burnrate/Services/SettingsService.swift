@@ -22,8 +22,6 @@ enum MenubarColorScheme: String, CaseIterable, Identifiable {
 enum MenubarSource: String, CaseIterable, Identifiable {
     case claude = "Claude"
     case codex = "Codex"
-    case kimi = "Kimi K2.5"
-    case gemini = "Gemini"
 
     var id: String { rawValue }
 }

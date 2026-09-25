@@ -175,8 +175,6 @@ struct MenubarSourceRow: View {
         switch source {
         case .claude: return "claude"
         case .codex: return "codex"
-        case .kimi: return "kimi"
-        case .gemini: return "gemini"
         }
     }
 
@@ -184,8 +182,6 @@ struct MenubarSourceRow: View {
         switch source {
         case .claude: return Color(hex: 0xDA7756)
         case .codex: return Color(hex: 0x10A37F)
-        case .kimi: return Color(hex: 0x6366F1)
-        case .gemini: return Color(hex: 0x4285F4)
         }
     }
 }
@@ -687,9 +683,11 @@ struct AboutTab: View {
     }
 }
 
+#if DEBUG
 #Preview {
     SettingsView(
         settingsService: SettingsService(),
         notificationService: NotificationService()
     )
 }
+#endif

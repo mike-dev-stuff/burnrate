@@ -150,6 +150,7 @@ struct ProgressBarView: View {
     }
 }
 
+#if DEBUG
 #Preview {
     VStack(spacing: 12) {
         ProgressBarView(value: 35, label: "5-hour", resetsAt: Date().addingTimeInterval(3600))
@@ -161,3 +162,4 @@ struct ProgressBarView: View {
     .frame(width: 300)
     .background(Color(NSColor.windowBackgroundColor))
 }
+#endif

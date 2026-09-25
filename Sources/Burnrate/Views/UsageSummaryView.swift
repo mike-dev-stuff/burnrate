@@ -139,22 +139,22 @@ private struct MiniProgressBar: View {
     }
 }
 
+#if DEBUG
 #Preview {
     UsageSummaryView(
         providerInfos: [
             ProviderInfo(id: "claude", name: "Claude", icon: "message.fill", brandColor: 0xDA7756, unavailableMessage: ""),
             ProviderInfo(id: "codex", name: "Codex", icon: "terminal.fill", brandColor: 0x10A37F, unavailableMessage: ""),
-            ProviderInfo(id: "kimi", name: "Kimi K2.5", icon: "sparkles", brandColor: 0x6366F1, unavailableMessage: ""),
-            ProviderInfo(id: "gemini", name: "Gemini", icon: "wand.and.stars", brandColor: 0x4285F4, unavailableMessage: ""),
         ],
         providerUsages: [
             "claude": ProviderUsage(primaryUtilization: 35, primaryLabel: "5h", primaryResetsAt: nil, secondaryUtilization: 72, secondaryLabel: "7d", secondaryResetsAt: nil, extraInfo: nil),
             "codex": ProviderUsage(primaryUtilization: 25, primaryLabel: "5h", primaryResetsAt: nil, secondaryUtilization: 45, secondaryLabel: "Weekly", secondaryResetsAt: nil, extraInfo: nil),
         ],
-        isInstalled: { id in id == "claude" || id == "codex" || id == "kimi" },
+        isInstalled: { id in id == "claude" || id == "codex" },
         hasTracking: { id in id == "claude" || id == "codex" }
     )
     .padding()
     .frame(width: 320)
     .background(Color(NSColor.windowBackgroundColor))
 }
+#endif

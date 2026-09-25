@@ -293,6 +293,7 @@ struct FooterActionsView: View {
     }
 }
 
+#if DEBUG
 #Preview {
     ContentView(
         viewModel: {
@@ -348,3 +349,4 @@ struct FooterActionsView: View {
         onShowSettings: {}
     )
 }
+#endif

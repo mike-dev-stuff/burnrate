@@ -195,11 +195,11 @@ struct ProviderComingSoonRow: View {
     }
 }
 
+#if DEBUG
 #Preview {
     struct PreviewWrapper: View {
         @State var expanded1 = true
         @State var expanded2 = true
-        @State var expanded3 = true
 
         var body: some View {
             VStack(spacing: 16) {
@@ -226,14 +226,6 @@ struct ProviderComingSoonRow: View {
                     hasTracking: true,
                     isExpanded: $expanded2
                 )
-
-                ProviderUsageCard(
-                    providerInfo: ProviderInfo(id: "kimi", name: "Kimi K2.5", icon: "sparkles", brandColor: 0x6366F1, unavailableMessage: ""),
-                    usage: nil,
-                    isInstalled: true,
-                    hasTracking: false,
-                    isExpanded: $expanded3
-                )
             }
             .padding()
             .frame(width: 320)
@@ -243,3 +235,4 @@ struct ProviderComingSoonRow: View {
 
     return PreviewWrapper()
 }
+#endif

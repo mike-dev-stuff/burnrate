@@ -46,6 +46,7 @@ struct ExtraUsageView: View {
     }
 }
 
+#if DEBUG
 #Preview {
     VStack(spacing: 12) {
         ExtraUsageView(accountInfo: AccountInfo(hasExtraUsageEnabled: true, billingType: "pro", email: "test@example.com"))
@@ -55,3 +56,4 @@ struct ExtraUsageView: View {
     .frame(width: 320)
     .background(Color(NSColor.windowBackgroundColor))
 }
+#endif

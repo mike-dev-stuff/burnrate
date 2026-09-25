@@ -31,8 +31,10 @@ struct AlertSettingsView: View {
     }
 }
 
+#if DEBUG
 #Preview {
     AlertSettingsView(notificationService: NotificationService())
         .padding()
         .frame(width: 300)
 }
+#endif

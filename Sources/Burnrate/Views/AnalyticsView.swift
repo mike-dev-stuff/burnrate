@@ -177,6 +177,7 @@ struct StatBox: View {
     }
 }
 
+#if DEBUG
 #Preview {
     AnalyticsView(
         snapshots: [
@@ -191,3 +192,4 @@ struct StatBox: View {
         weekStats: (tokens: 850000, sessions: 28, cost: 2.55)
     )
 }
+#endif

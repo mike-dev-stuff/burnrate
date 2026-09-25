@@ -20,8 +20,6 @@ final class UsageViewModel {
     let providerInfos: [ProviderInfo] = [
         ProviderInfo(id: "claude", name: "Claude", icon: "message.fill", brandColor: 0xDA7756, unavailableMessage: "Run 'claude' to refresh your OAuth token", installCommand: "npm install -g @anthropic-ai/claude-code"),
         ProviderInfo(id: "codex", name: "Codex", icon: "terminal.fill", brandColor: 0x10A37F, unavailableMessage: "Install Codex CLI to track usage", installCommand: "npm install -g @openai/codex"),
-        ProviderInfo(id: "kimi", name: "Kimi K2.5", icon: "sparkles", brandColor: 0x6366F1, unavailableMessage: "Install Kimi CLI to track usage", installCommand: "npm install -g @anthropic/kimi-cli"),
-        ProviderInfo(id: "gemini", name: "Gemini", icon: "wand.and.stars", brandColor: 0x4285F4, unavailableMessage: "Install Gemini CLI to track usage", installCommand: "npm install -g @anthropic/gemini-cli"),
     ]
 
     // Analytics data
@@ -52,8 +50,6 @@ final class UsageViewModel {
         switch providerId {
         case "claude": return !isTokenExpired
         case "codex": return isCodexInstalled
-        case "kimi": return FileManager.default.fileExists(atPath: NSHomeDirectory() + "/.kimi")
-        case "gemini": return FileManager.default.fileExists(atPath: NSHomeDirectory() + "/.gemini")
         default: return false
         }
     }
@@ -76,8 +72,6 @@ final class UsageViewModel {
                 return isTokenExpired ? "!" : "--"
             case .codex:
                 return isCodexInstalled ? "--" : "!"
-            case .kimi, .gemini:
-                return "--"
             }
         }
 
@@ -100,7 +94,7 @@ final class UsageViewModel {
         let (fiveHour, sevenDay) = getMenubarLimits()
 
         guard fiveHour != nil || sevenDay != nil else {
-            return "🤖"
+            return "🔥"
         }
 
         let fiveHourValue = fiveHour ?? 0
@@ -119,10 +113,8 @@ final class UsageViewModel {
 
         if percentage >= 90 {
             return "🚨"
-        } else if percentage >= 70 {
-            return "🔥"
         } else {
-            return "🤖"
+            return "🔥"
         }
     }
 
@@ -131,8 +123,6 @@ final class UsageViewModel {
         switch settingsService.menubarSource {
         case .claude: sourceId = "claude"
         case .codex: sourceId = "codex"
-        case .kimi: sourceId = "kimi"
-        case .gemini: sourceId = "gemini"
         }
 
         if let usage = providerUsages[sourceId] {

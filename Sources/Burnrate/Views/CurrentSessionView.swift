@@ -157,6 +157,7 @@ struct NoSessionView: View {
     }
 }
 
+#if DEBUG
 #Preview {
     VStack(spacing: 20) {
         CurrentSessionView(session: CurrentSession(
@@ -177,3 +178,4 @@ struct NoSessionView: View {
     .frame(width: 320)
     .background(Color(NSColor.windowBackgroundColor))
 }
+#endif

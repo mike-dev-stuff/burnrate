@@ -110,6 +110,7 @@ struct EmptyStateView: View {
     }
 }
 
+#if DEBUG
 #Preview {
     VStack(spacing: 20) {
         UsageLimitsView(
@@ -130,3 +131,4 @@ struct EmptyStateView: View {
     .frame(width: 320)
     .background(Color(NSColor.windowBackgroundColor))
 }
+#endif

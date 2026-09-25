@@ -76,6 +76,7 @@ struct CodexNotInstalledView: View {
     }
 }
 
+#if DEBUG
 #Preview {
     VStack(spacing: 20) {
         CodexUsageLimitsView(
@@ -99,3 +100,4 @@ struct CodexNotInstalledView: View {
     .frame(width: 320)
     .background(Color(NSColor.windowBackgroundColor))
 }
+#endif

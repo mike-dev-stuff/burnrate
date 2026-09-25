@@ -123,6 +123,7 @@ struct SessionRowView: View {
     }
 }
 
+#if DEBUG
 #Preview {
     RecentSessionsView(
         sessions: [
@@ -166,3 +167,4 @@ struct SessionRowView: View {
     .frame(width: 320)
     .background(Color(NSColor.windowBackgroundColor))
 }
+#endif

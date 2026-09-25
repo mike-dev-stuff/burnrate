@@ -86,6 +86,7 @@ struct BrandIcon: View {
     """
 }
 
+#if DEBUG
 #Preview {
     HStack(spacing: 20) {
         ForEach(["claude", "codex", "kimi", "gemini"], id: \.self) { id in
@@ -118,3 +119,4 @@ private func brandColor(for id: String) -> Color {
     default: return .primary
     }
 }
+#endif
