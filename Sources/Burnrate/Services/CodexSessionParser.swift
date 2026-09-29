@@ -4,6 +4,12 @@ struct CodexSessionParser {
     private let codexHome: URL
     private let maxDaysToSearch = 7
 
+    /// Bytes read from the end of a rollout file on the first attempt. Codex
+    /// appends a `token_count` event every few lines, so the latest one is
+    /// normally within a few KB of the end even when the file is hundreds of MB.
+    /// The window grows if no record is found in it.
+    private let initialTailWindow: UInt64 = 256 * 1024
+
     init() {
         // CODEX_HOME defaults to ~/.codex
         if let customHome = ProcessInfo.processInfo.environment["CODEX_HOME"] {
@@ -82,47 +88,82 @@ struct CodexSessionParser {
         return nil
     }
 
+    /// Finds the most recent `token_count` event that carries rate limits by
+    /// reading the file from the end. Rollout files grow to hundreds of MB, so
+    /// only a tail window is read; it is widened until a record is found or the
+    /// whole file has been covered.
     private func parseFileForUsage(_ file: URL) -> CodexUsageLimits? {
         guard let fileHandle = FileHandle(forReadingAtPath: file.path) else {
             return nil
         }
         defer { try? fileHandle.close() }
 
-        var latestTokenCountPayload: CodexTokenCountPayload?
-        var buffer = Data()
-        let chunkSize = 8192
+        guard let fileSize = try? fileHandle.seekToEnd(), fileSize > 0 else {
+            return nil
+        }
 
-        // Read file in chunks, looking for event_msg with token_count payload
+        var windowSize = initialTailWindow
         while true {
-            let chunk = fileHandle.readData(ofLength: chunkSize)
-            if chunk.isEmpty { break }
-            buffer.append(chunk)
+            let readSize = min(windowSize, fileSize)
+            let offset = fileSize - readSize
 
-            // Process complete lines from buffer
-            while let newlineRange = buffer.range(of: Data([0x0A])) {
-                let lineData = buffer.subdata(in: 0..<newlineRange.lowerBound)
-                buffer.removeSubrange(0...newlineRange.lowerBound)
-
-                if let record = try? JSONDecoder().decode(CodexEventMessage.self, from: lineData),
-                   record.type == "event_msg",
-                   let payload = record.payload,
-                   payload.type == "token_count" {
-                    latestTokenCountPayload = payload
-                }
+            do {
+                try fileHandle.seek(toOffset: offset)
+            } catch {
+                return nil
             }
+            guard let window = try? fileHandle.read(upToCount: Int(readSize)) else {
+                return nil
+            }
+
+            if let payload = latestTokenCountPayload(in: window) {
+                return makeLimits(from: payload)
+            }
+
+            if readSize >= fileSize {
+                // Whole file scanned, nothing usable in it
+                return nil
+            }
+            windowSize *= 4
+        }
+    }
+
+    /// Walks `data` backwards one line at a time and decodes the last line that
+    /// is a `token_count` event with rate limits. A partial first line (when the
+    /// window does not start at the beginning of the file) or a partial last line
+    /// (still being written by Codex) simply fails to decode and is skipped.
+    private func latestTokenCountPayload(in data: Data) -> CodexTokenCountPayload? {
+        let marker = Data("token_count".utf8)
+        let decoder = JSONDecoder()
+        var lineEnd = data.endIndex
+
+        while lineEnd > data.startIndex {
+            let lineStart = data[data.startIndex..<lineEnd]
+                .lastIndex(of: 0x0A)
+                .map { $0 + 1 } ?? data.startIndex
+            let line = data[lineStart..<lineEnd]
+
+            // Cheap substring check before paying for a JSON decode
+            if line.range(of: marker) != nil,
+               let record = try? decoder.decode(CodexEventMessage.self, from: Data(line)),
+               record.type == "event_msg",
+               let payload = record.payload,
+               payload.type == "token_count",
+               payload.rateLimits != nil {
+                return payload
+            }
+
+            if lineStart == data.startIndex {
+                break
+            }
+            lineEnd = lineStart - 1  // Skip the newline that ended the previous line
         }
 
-        // Process any remaining data in buffer
-        if !buffer.isEmpty,
-           let record = try? JSONDecoder().decode(CodexEventMessage.self, from: buffer),
-           record.type == "event_msg",
-           let payload = record.payload,
-           payload.type == "token_count" {
-            latestTokenCountPayload = payload
-        }
+        return nil
+    }
 
-        guard let payload = latestTokenCountPayload,
-              let rateLimits = payload.rateLimits else {
+    private func makeLimits(from payload: CodexTokenCountPayload) -> CodexUsageLimits? {
+        guard let rateLimits = payload.rateLimits else {
             return nil
         }
 

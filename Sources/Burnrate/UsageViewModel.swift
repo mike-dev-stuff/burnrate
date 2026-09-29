@@ -13,6 +13,13 @@ final class UsageViewModel {
     var errorMessage: String?
     var isLoading: Bool = false
 
+    /// Whether the menubar popover is on screen. Set by AppDelegate from the
+    /// popover delegate callbacks. SwiftUI's onDisappear does not fire when an
+    /// NSPopover closes (its content view stays alive in a hidden window), so
+    /// views use this to stop repeating animations that would otherwise keep
+    /// the hidden popover rendering at full frame rate.
+    var isPopoverVisible: Bool = false
+
     // Multi-provider usage data
     var providerUsages: [String: ProviderUsage] = [:]
 
@@ -37,6 +44,17 @@ final class UsageViewModel {
     private let analyticsStore = AnalyticsStore()
     private let supabaseClient = SupabaseClient()
     private var refreshTimer: Timer?
+    @ObservationIgnored private var isRefreshing = false
+
+    /// Everything read from local files during one refresh. Gathered on a
+    /// background task so disk and keychain I/O never block the main thread.
+    private struct LocalSnapshot {
+        let recentSessions: [SessionInfo]
+        let currentSession: CurrentSession?
+        let accountInfo: AccountInfo
+        let isTokenExpired: Bool
+        let codexUsageLimits: CodexUsageLimits?
+    }
 
     // Track previous values for threshold detection
     private var previousFiveHour: Double?
@@ -163,39 +181,37 @@ final class UsageViewModel {
     }
 
     func refresh() {
+        // A refresh already in flight will publish shortly; don't stack another.
+        guard !isRefreshing else { return }
+        isRefreshing = true
         isLoading = true
         errorMessage = nil
 
-        // Get Claude session data
-        self.recentSessions = sessionParser.getRecentSessions()
-        self.currentSession = sessionParser.getCurrentSession()
-        self.accountInfo = accountParser.getAccountInfo()
-        self.isTokenExpired = KeychainService.isTokenExpired()
+        let sessionParser = self.sessionParser
+        let codexSessionParser = self.codexSessionParser
+        let accountParser = self.accountParser
 
-        // Get Codex usage data
-        self.codexUsageLimits = codexSessionParser.getUsageLimits()
-
-        // Map Codex to provider usage
-        if let codex = self.codexUsageLimits {
-            self.providerUsages["codex"] = ProviderUsage(
-                primaryUtilization: codex.fiveHourUtilization,
-                primaryLabel: "5-hour",
-                primaryResetsAt: codex.fiveHourResetsAt,
-                secondaryUtilization: codex.weeklyUtilization,
-                secondaryLabel: "Weekly",
-                secondaryResetsAt: codex.weeklyResetsAt,
-                extraInfo: nil
-            )
-        } else {
-            self.providerUsages.removeValue(forKey: "codex")
-        }
-
-        // Calculate today's token usage from sessions
-        let todayTokens = calculateTodayTokens()
-        let todaySessions = countTodaySessions()
-
-        // Fetch API data and analytics asynchronously
         Task {
+            // Session file parsing and the keychain lookup (a `security`
+            // subprocess) are blocking work; keep them off the main thread.
+            let local = await Task.detached(priority: .utility) {
+                LocalSnapshot(
+                    recentSessions: sessionParser.getRecentSessions(),
+                    currentSession: sessionParser.getCurrentSession(),
+                    accountInfo: accountParser.getAccountInfo(),
+                    isTokenExpired: KeychainService.isTokenExpired(),
+                    codexUsageLimits: codexSessionParser.getUsageLimits()
+                )
+            }.value
+
+            // Show local data as soon as it is ready; the API call may be slow.
+            await MainActor.run {
+                self.apply(local)
+            }
+
+            let todayTokens = Self.todayTokens(in: local.recentSessions)
+            let todaySessions = Self.todaySessionCount(in: local.recentSessions)
+
             let limits = await usageAPI.fetchUsage()
 
             // Record analytics
@@ -220,6 +236,7 @@ final class UsageViewModel {
                 self.todayStats = today
                 self.weekStats = week
                 self.isLoading = false
+                self.isRefreshing = false
 
                 // Map Claude to provider usage
                 if let limits = limits {
@@ -264,20 +281,44 @@ final class UsageViewModel {
         }
     }
 
-    private func calculateTodayTokens() -> Int {
+    /// Publishes the locally parsed data. Must be called on the main thread.
+    private func apply(_ local: LocalSnapshot) {
+        recentSessions = local.recentSessions
+        currentSession = local.currentSession
+        accountInfo = local.accountInfo
+        isTokenExpired = local.isTokenExpired
+        codexUsageLimits = local.codexUsageLimits
+
+        // Map Codex to provider usage
+        if let codex = local.codexUsageLimits {
+            providerUsages["codex"] = ProviderUsage(
+                primaryUtilization: codex.fiveHourUtilization,
+                primaryLabel: "5-hour",
+                primaryResetsAt: codex.fiveHourResetsAt,
+                secondaryUtilization: codex.weeklyUtilization,
+                secondaryLabel: "Weekly",
+                secondaryResetsAt: codex.weeklyResetsAt,
+                extraInfo: nil
+            )
+        } else {
+            providerUsages.removeValue(forKey: "codex")
+        }
+    }
+
+    private static func todayTokens(in sessions: [SessionInfo]) -> Int {
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: Date())
 
-        return recentSessions
+        return sessions
             .filter { calendar.startOfDay(for: $0.timestamp) == today }
             .reduce(0) { $0 + $1.totalTokens }
     }
 
-    private func countTodaySessions() -> Int {
+    private static func todaySessionCount(in sessions: [SessionInfo]) -> Int {
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: Date())
 
-        return recentSessions
+        return sessions
             .filter { calendar.startOfDay(for: $0.timestamp) == today }
             .count
     }

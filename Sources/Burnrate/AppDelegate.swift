@@ -50,6 +50,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         popover.contentSize = NSSize(width: 340, height: 580)
         popover.behavior = .transient
         popover.animates = true
+        popover.delegate = self
         popover.contentViewController = NSHostingController(
             rootView: ContentView(
                 viewModel: viewModel,
@@ -209,6 +210,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     func checkForUpdates() {
         updaterController?.checkForUpdates(nil)
+    }
+}
+
+extension AppDelegate: NSPopoverDelegate {
+    func popoverDidShow(_ notification: Notification) {
+        viewModel.isPopoverVisible = true
+    }
+
+    func popoverDidClose(_ notification: Notification) {
+        viewModel.isPopoverVisible = false
     }
 }
 

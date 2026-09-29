@@ -144,7 +144,8 @@ struct SessionParser {
     private func parseSessionSummary(file: URL, projectPath: String, encodedProject: String) -> SessionInfo? {
         let sessionId = file.deletingPathExtension().lastPathComponent
 
-        // Read only first 100 lines using streaming (handles large files)
+        // Only the first `maxLines` lines are needed; stream them so a huge
+        // file costs the same as a small one.
         guard let fileHandle = FileHandle(forReadingAtPath: file.path) else {
             return nil
         }
@@ -158,52 +159,41 @@ struct SessionParser {
         var summary: String?
         var lineCount = 0
         let maxLines = 150
+        let decoder = JSONDecoder()
 
-        // Read in chunks and process line by line
-        var buffer = Data()
-        let chunkSize = 8192
+        forEachLine(in: fileHandle) { lineData in
+            lineCount += 1
+            if lineCount > maxLines {
+                return false
+            }
 
-        while lineCount < maxLines {
-            let chunk = fileHandle.readData(ofLength: chunkSize)
-            if chunk.isEmpty { break }
-            buffer.append(chunk)
+            guard let entry = try? decoder.decode(SessionEntry.self, from: lineData) else {
+                return true
+            }
 
-            // Process complete lines from buffer
-            while let newlineRange = buffer.range(of: Data([0x0A])) {
-                let lineData = buffer.subdata(in: 0..<newlineRange.lowerBound)
-                buffer.removeSubrange(0...newlineRange.lowerBound)
-
-                lineCount += 1
-                if lineCount > maxLines && slug != nil && timestamp != nil {
-                    break
-                }
-
-                guard let entry = try? JSONDecoder().decode(SessionEntry.self, from: lineData) else {
-                    continue
-                }
-
-                if entry.type == "user" && slug == nil {
-                    slug = entry.slug ?? String(sessionId.prefix(8))
-                    if let ts = entry.timestamp {
-                        timestamp = parseTimestamp(ts)
-                    }
-                }
-
-                if entry.type == "user" || entry.type == "assistant" {
-                    messageCount += 1
-                }
-
-                if entry.type == "assistant", model == nil {
-                    model = entry.message?.model
-                    if let usage = entry.message?.usage {
-                        totalTokens += (usage.inputTokens ?? 0) + (usage.outputTokens ?? 0)
-                    }
-                }
-
-                if entry.type == "summary" {
-                    summary = entry.summary
+            if entry.type == "user" && slug == nil {
+                slug = entry.slug ?? String(sessionId.prefix(8))
+                if let ts = entry.timestamp {
+                    timestamp = parseTimestamp(ts)
                 }
             }
+
+            if entry.type == "user" || entry.type == "assistant" {
+                messageCount += 1
+            }
+
+            if entry.type == "assistant", model == nil {
+                model = entry.message?.model
+                if let usage = entry.message?.usage {
+                    totalTokens += (usage.inputTokens ?? 0) + (usage.outputTokens ?? 0)
+                }
+            }
+
+            if entry.type == "summary" {
+                summary = entry.summary
+            }
+
+            return true
         }
 
         let fallbackDate = (try? file.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate ?? Date()
@@ -247,43 +237,32 @@ struct SessionParser {
 
         // For very large files (>10MB), only read first 1MB
         let maxBytesToRead = fileSize > 10_000_000 ? 1_000_000 : Int(fileSize)
-        var bytesRead = 0
-        var buffer = Data()
-        let chunkSize = 8192
+        let decoder = JSONDecoder()
 
-        while bytesRead < maxBytesToRead {
-            let chunk = fileHandle.readData(ofLength: chunkSize)
-            if chunk.isEmpty { break }
-            buffer.append(chunk)
-            bytesRead += chunk.count
+        forEachLine(in: fileHandle, maxBytes: maxBytesToRead) { lineData in
+            guard let entry = try? decoder.decode(SessionEntry.self, from: lineData) else {
+                return true
+            }
 
-            // Process complete lines from buffer
-            while let newlineRange = buffer.range(of: Data([0x0A])) {
-                let lineData = buffer.subdata(in: 0..<newlineRange.lowerBound)
-                buffer.removeSubrange(0...newlineRange.lowerBound)
-
-                guard let entry = try? JSONDecoder().decode(SessionEntry.self, from: lineData) else {
-                    continue
-                }
-
-                if entry.type == "user" && slug == nil {
-                    slug = entry.slug ?? String(sessionId.prefix(8))
-                    if let ts = entry.timestamp {
-                        startTime = parseTimestamp(ts)
-                    }
-                }
-
-                if entry.type == "user" || entry.type == "assistant" {
-                    messageCount += 1
-                }
-
-                if entry.type == "assistant", let usage = entry.message?.usage {
-                    inputTokens += usage.inputTokens ?? 0
-                    outputTokens += usage.outputTokens ?? 0
-                    cacheReadTokens += usage.cacheReadInputTokens ?? 0
-                    cacheCreationTokens += usage.cacheCreationInputTokens ?? 0
+            if entry.type == "user" && slug == nil {
+                slug = entry.slug ?? String(sessionId.prefix(8))
+                if let ts = entry.timestamp {
+                    startTime = parseTimestamp(ts)
                 }
             }
+
+            if entry.type == "user" || entry.type == "assistant" {
+                messageCount += 1
+            }
+
+            if entry.type == "assistant", let usage = entry.message?.usage {
+                inputTokens += usage.inputTokens ?? 0
+                outputTokens += usage.outputTokens ?? 0
+                cacheReadTokens += usage.cacheReadInputTokens ?? 0
+                cacheCreationTokens += usage.cacheCreationInputTokens ?? 0
+            }
+
+            return true
         }
 
         let fallbackDate = (try? file.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate ?? Date()
@@ -309,6 +288,55 @@ struct SessionParser {
         }
         formatter.formatOptions = [.withInternetDateTime]
         return formatter.date(from: ts)
+    }
+}
+
+// MARK: - Line reading
+
+/// Reads a JSONL file in chunks and hands each complete line (without its
+/// trailing newline) to `body`. Every byte is scanned exactly once, so the cost
+/// is linear in bytes read even when single lines are megabytes long. Reading
+/// stops when `body` returns `false`, at end of file, or once `maxBytes` have
+/// been consumed.
+private func forEachLine(
+    in fileHandle: FileHandle,
+    maxBytes: Int = .max,
+    chunkSize: Int = 64 * 1024,
+    _ body: (Data) -> Bool
+) {
+    var partial = Data()  // Bytes of the current line carried over from earlier chunks
+    var bytesRead = 0
+
+    while bytesRead < maxBytes {
+        let chunk = fileHandle.readData(ofLength: chunkSize)
+        if chunk.isEmpty {
+            // End of file: flush an unterminated final line, if any
+            if !partial.isEmpty {
+                _ = body(partial)
+            }
+            return
+        }
+        bytesRead += chunk.count
+
+        var lineStart = chunk.startIndex
+        while let newline = chunk[lineStart...].firstIndex(of: 0x0A) {
+            let line: Data
+            if partial.isEmpty {
+                line = Data(chunk[lineStart..<newline])
+            } else {
+                partial.append(chunk[lineStart..<newline])
+                line = partial
+                partial = Data()
+            }
+            if !body(line) {
+                return
+            }
+            lineStart = newline + 1
+        }
+
+        if lineStart < chunk.endIndex {
+            partial.append(chunk[lineStart...])
+        }
     }
 }
 

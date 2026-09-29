@@ -106,6 +106,7 @@ struct ContentView: View {
         }
         .frame(width: 340)
         .background(Color(NSColor.windowBackgroundColor))
+        .environment(\.isPopoverVisible, viewModel.isPopoverVisible)
         .onChange(of: expandedProviders) { _, newValue in
             UserDefaults.standard.set(Array(newValue), forKey: "expandedProviders")
         }
@@ -172,7 +173,11 @@ struct HeaderView: View {
     let isLoading: Bool
     let onSettings: () -> Void
 
-    @State private var flameOffset: CGFloat = 0
+    // The bobbing flame runs only while the popover is on screen. A repeating
+    // animation left running in the closed popover keeps SwiftUI rendering the
+    // hidden view at full frame rate indefinitely.
+    @Environment(\.isPopoverVisible) private var isPopoverVisible
+    @State private var isFlameAnimating = false
 
     var body: some View {
         HStack(spacing: BurnrateTheme.spacingMD) {
@@ -189,15 +194,18 @@ struct HeaderView: View {
                     Image(systemName: "flame.fill")
                         .font(.system(size: 20, weight: .semibold))
                         .foregroundStyle(BurnrateTheme.accentGradient)
-                        .offset(y: flameOffset)
+                        .offset(y: isFlameAnimating ? -1.5 : 0)
+                        .animation(
+                            isFlameAnimating
+                                ? .easeInOut(duration: 2).repeatForever(autoreverses: true)
+                                : .easeInOut(duration: 0.3),
+                            value: isFlameAnimating
+                        )
                 }
-                .onAppear {
-                    withAnimation(
-                        .easeInOut(duration: 2)
-                        .repeatForever(autoreverses: true)
-                    ) {
-                        flameOffset = -1.5
-                    }
+                .onAppear { isFlameAnimating = isPopoverVisible }
+                .onDisappear { isFlameAnimating = false }
+                .onChange(of: isPopoverVisible) { _, visible in
+                    isFlameAnimating = visible
                 }
 
                 Text("Burnrate")

@@ -192,10 +192,31 @@ struct IconButtonStyle: ButtonStyle {
 
 // MARK: - Pulsing Glow Modifier
 
+// MARK: - Popover Visibility
+
+/// True while the hosting popover is on screen. Defaults to true so views in
+/// ordinary windows and previews animate normally; ContentView sets it from
+/// the popover delegate so repeating animations stop when the popover closes.
+private struct PopoverVisibleKey: EnvironmentKey {
+    static let defaultValue = true
+}
+
+extension EnvironmentValues {
+    var isPopoverVisible: Bool {
+        get { self[PopoverVisibleKey.self] }
+        set { self[PopoverVisibleKey.self] = newValue }
+    }
+}
+
 struct PulsingGlow: ViewModifier {
     let color: Color
     let isActive: Bool
+    @Environment(\.isPopoverVisible) private var isPopoverVisible
     @State private var isPulsing = false
+
+    private var shouldPulse: Bool {
+        isActive && isPopoverVisible
+    }
 
     func body(content: Content) -> some View {
         content
@@ -205,14 +226,19 @@ struct PulsingGlow: ViewModifier {
                 x: 0,
                 y: 0
             )
-            .onAppear {
-                guard isActive else { return }
-                withAnimation(
-                    .easeInOut(duration: 1.5)
-                    .repeatForever(autoreverses: true)
-                ) {
-                    isPulsing = true
-                }
+            // Repeat only while pulsing, and settle back with a short animation
+            // when it stops. Stopping on disappear matters: a repeating animation
+            // left running keeps the hidden popover rendering at full frame rate.
+            .animation(
+                isPulsing
+                    ? .easeInOut(duration: 1.5).repeatForever(autoreverses: true)
+                    : .easeInOut(duration: 0.3),
+                value: isPulsing
+            )
+            .onAppear { isPulsing = shouldPulse }
+            .onDisappear { isPulsing = false }
+            .onChange(of: shouldPulse) { _, pulse in
+                isPulsing = pulse
             }
     }
 }
@@ -226,7 +252,8 @@ extension View {
 // MARK: - Shimmer Loading
 
 struct ShimmerModifier: ViewModifier {
-    @State private var phase: CGFloat = 0
+    @Environment(\.isPopoverVisible) private var isPopoverVisible
+    @State private var isShimmering = false
 
     func body(content: Content) -> some View {
         content
@@ -240,17 +267,20 @@ struct ShimmerModifier: ViewModifier {
                     startPoint: .leading,
                     endPoint: .trailing
                 )
-                .offset(x: phase)
-                .onAppear {
-                    withAnimation(
-                        .linear(duration: 1.5)
-                        .repeatForever(autoreverses: false)
-                    ) {
-                        phase = 300
-                    }
-                }
+                .offset(x: isShimmering ? 300 : 0)
+                .animation(
+                    isShimmering
+                        ? .linear(duration: 1.5).repeatForever(autoreverses: false)
+                        : nil,
+                    value: isShimmering
+                )
             )
             .clipped()
+            .onAppear { isShimmering = isPopoverVisible }
+            .onDisappear { isShimmering = false }
+            .onChange(of: isPopoverVisible) { _, visible in
+                isShimmering = visible
+            }
     }
 }
 
