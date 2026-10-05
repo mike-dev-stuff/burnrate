@@ -107,7 +107,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             button.image = viewModel.menubarIcon
             button.image?.size = NSSize(width: 20, height: 20)
         } else {
-            button.image = BurnrateIcon.menubarImage
+            button.image = BurnrateIcon.smallImage
             button.title = [viewModel.menubarWarning, viewModel.menubarTitle]
                 .filter { !$0.isEmpty }
                 .joined(separator: " ")

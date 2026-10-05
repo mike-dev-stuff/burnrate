@@ -184,10 +184,11 @@ struct HeaderView: View {
             // Logo
             HStack(spacing: BurnrateTheme.spacingSM) {
                 ZStack {
-                    if let icon = BurnrateIcon.image {
+                    if let icon = BurnrateIcon.smallImage {
                         // Glow effect
                         Image(nsImage: icon)
                             .resizable()
+                            .interpolation(.high)
                             .scaledToFit()
                             .frame(width: 20, height: 20)
                             .blur(radius: 6)
@@ -195,6 +196,7 @@ struct HeaderView: View {
 
                         Image(nsImage: icon)
                             .resizable()
+                            .interpolation(.high)
                             .scaledToFit()
                             .frame(width: 20, height: 20)
                             .offset(y: isFlameAnimating ? -1.5 : 0)

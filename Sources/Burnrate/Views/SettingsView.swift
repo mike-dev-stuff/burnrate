@@ -229,9 +229,10 @@ struct MenubarOptionRow: View {
                         )
                 } else {
                     HStack(spacing: 4) {
-                        if let icon = BurnrateIcon.image {
+                        if let icon = BurnrateIcon.previewImage {
                             Image(nsImage: icon)
                                 .resizable()
+                                .interpolation(.high)
                                 .scaledToFit()
                                 .frame(width: 12, height: 12)
                         }
@@ -599,6 +600,7 @@ struct AboutTab: View {
             if let appIcon = BurnrateIcon.image {
                 Image(nsImage: appIcon)
                     .resizable()
+                    .interpolation(.high)
                     .frame(width: 80, height: 80)
                     .clipShape(RoundedRectangle(cornerRadius: 18))
                     .shadow(color: .black.opacity(0.2), radius: 8, y: 4)
