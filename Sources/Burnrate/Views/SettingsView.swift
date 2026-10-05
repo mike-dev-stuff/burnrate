@@ -229,9 +229,12 @@ struct MenubarOptionRow: View {
                         )
                 } else {
                     HStack(spacing: 4) {
-                        Image(systemName: "flame.fill")
-                            .font(.system(size: 10, weight: .medium))
-                            .foregroundStyle(BurnrateTheme.statusOrange)
+                        if let icon = BurnrateIcon.image {
+                            Image(nsImage: icon)
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 12, height: 12)
+                        }
 
                         if let preview = previewText(for: option) {
                             Text(preview)
@@ -593,7 +596,7 @@ struct AboutTab: View {
             Spacer()
 
             // App icon
-            if let appIcon = NSImage(named: "AppIcon") {
+            if let appIcon = BurnrateIcon.image {
                 Image(nsImage: appIcon)
                     .resizable()
                     .frame(width: 80, height: 80)

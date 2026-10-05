@@ -129,6 +129,7 @@ mkdir -p "$APP_PATH/Contents/Frameworks"
 
 cp .build/release/Burnrate "$APP_PATH/Contents/MacOS/"
 cp Resources/Info.plist "$APP_PATH/Contents/"
+cp -R .build/release/Burnrate_Burnrate.bundle "$APP_PATH/Contents/Resources/"
 
 # Copy icon if exists
 if [ -f "Resources/AppIcon.icns" ]; then

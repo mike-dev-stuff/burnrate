@@ -63,6 +63,7 @@ mkdir -p dist/Burnrate.app/Contents/{MacOS,Resources,Frameworks}
 cp .build/release/Burnrate dist/Burnrate.app/Contents/MacOS/
 cp Resources/Info.plist dist/Burnrate.app/Contents/
 cp Resources/AppIcon.icns dist/Burnrate.app/Contents/Resources/
+cp -R .build/release/Burnrate_Burnrate.bundle dist/Burnrate.app/Contents/Resources/
 ditto .build/artifacts/sparkle/Sparkle/Sparkle.xcframework/macos-arm64_x86_64/Sparkle.framework dist/Burnrate.app/Contents/Frameworks/Sparkle.framework
 install_name_tool -add_rpath @executable_path/../Frameworks dist/Burnrate.app/Contents/MacOS/Burnrate
 
@@ -120,6 +121,8 @@ The app reads data from three sources:
 Analytics data is stored locally in `~/.burnrate/analytics.json`.
 
 ## Development
+
+The app and menu bar use `icon/fire.png`. After replacing it, run `bash scripts/update-icons.sh` to regenerate the app icon and bundled image.
 
 Key files:
 

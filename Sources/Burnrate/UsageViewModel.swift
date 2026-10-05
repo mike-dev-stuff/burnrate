@@ -108,11 +108,11 @@ final class UsageViewModel {
         }
     }
 
-    var menubarEmoji: String {
+    var menubarWarning: String {
         let (fiveHour, sevenDay) = getMenubarLimits()
 
         guard fiveHour != nil || sevenDay != nil else {
-            return "🔥"
+            return ""
         }
 
         let fiveHourValue = fiveHour ?? 0
@@ -132,7 +132,7 @@ final class UsageViewModel {
         if percentage >= 90 {
             return "🚨"
         } else {
-            return "🔥"
+            return ""
         }
     }
 

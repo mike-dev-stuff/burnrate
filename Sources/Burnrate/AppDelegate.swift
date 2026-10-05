@@ -19,6 +19,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSLog("[DEBUG] applicationDidFinishLaunching started")
+        NSApp.applicationIconImage = BurnrateIcon.image
 
         // Forks need their own update feed and signing key before enabling Sparkle.
         let updateFeed = Bundle.main.object(forInfoDictionaryKey: "SUFeedURL") as? String
@@ -98,6 +99,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func updateMenubarTitle() {
         guard let button = statusItem.button else { return }
+        button.imagePosition = .imageLeft
 
         if viewModel.settingsService.menubarDisplay == .chart {
             // Chart mode: show icon, no text
@@ -105,11 +107,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             button.image = viewModel.menubarIcon
             button.image?.size = NSSize(width: 20, height: 20)
         } else {
-            // Text modes: show emoji + text, no image
-            button.image = nil
-            let title = viewModel.menubarTitle
-            let emoji = viewModel.menubarEmoji
-            button.title = "\(emoji) \(title)"
+            button.image = BurnrateIcon.menubarImage
+            button.title = [viewModel.menubarWarning, viewModel.menubarTitle]
+                .filter { !$0.isEmpty }
+                .joined(separator: " ")
         }
     }
 

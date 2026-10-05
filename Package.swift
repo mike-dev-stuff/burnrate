@@ -13,7 +13,8 @@ let package = Package(
         .executableTarget(
             name: "Burnrate",
             dependencies: ["Sparkle"],
-            path: "Sources/Burnrate"
+            path: "Sources/Burnrate",
+            resources: [.copy("Resources/fire.png")]
         )
     ]
 )
