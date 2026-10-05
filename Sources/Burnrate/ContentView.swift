@@ -184,23 +184,27 @@ struct HeaderView: View {
             // Logo
             HStack(spacing: BurnrateTheme.spacingSM) {
                 ZStack {
-                    // Glow effect
-                    Image(systemName: "flame.fill")
-                        .font(.system(size: 20, weight: .semibold))
-                        .foregroundStyle(BurnrateTheme.accentGradient)
-                        .blur(radius: 6)
-                        .opacity(0.5)
+                    if let icon = BurnrateIcon.image {
+                        // Glow effect
+                        Image(nsImage: icon)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 20, height: 20)
+                            .blur(radius: 6)
+                            .opacity(0.5)
 
-                    Image(systemName: "flame.fill")
-                        .font(.system(size: 20, weight: .semibold))
-                        .foregroundStyle(BurnrateTheme.accentGradient)
-                        .offset(y: isFlameAnimating ? -1.5 : 0)
-                        .animation(
-                            isFlameAnimating
-                                ? .easeInOut(duration: 2).repeatForever(autoreverses: true)
-                                : .easeInOut(duration: 0.3),
-                            value: isFlameAnimating
-                        )
+                        Image(nsImage: icon)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 20, height: 20)
+                            .offset(y: isFlameAnimating ? -1.5 : 0)
+                            .animation(
+                                isFlameAnimating
+                                    ? .easeInOut(duration: 2).repeatForever(autoreverses: true)
+                                    : .easeInOut(duration: 0.3),
+                                value: isFlameAnimating
+                            )
+                    }
                 }
                 .onAppear { isFlameAnimating = isPopoverVisible }
                 .onDisappear { isFlameAnimating = false }
