@@ -29,11 +29,6 @@ final class UsageViewModel {
         ProviderInfo(id: "codex", name: "Codex", icon: "terminal.fill", brandColor: 0x10A37F, unavailableMessage: "Install Codex CLI to track usage", installCommand: "npm install -g @openai/codex"),
     ]
 
-    // Analytics data
-    var snapshots: [UsageSnapshot] = []
-    var todayStats: DailyStats = .empty
-    var weekStats: (tokens: Int, sessions: Int, cost: Double) = (0, 0, 0)
-
     // Services
     let notificationService = NotificationService()
     let settingsService = SettingsService()
@@ -41,7 +36,6 @@ final class UsageViewModel {
     private let codexSessionParser = CodexSessionParser()
     private let accountParser = AccountParser()
     private let usageAPI = UsageAPIClient()
-    private let analyticsStore = AnalyticsStore()
     private let supabaseClient = SupabaseClient()
     private var refreshTimer: Timer?
     @ObservationIgnored private var isRefreshing = false
@@ -209,32 +203,10 @@ final class UsageViewModel {
                 self.apply(local)
             }
 
-            let todayTokens = Self.todayTokens(in: local.recentSessions)
-            let todaySessions = Self.todaySessionCount(in: local.recentSessions)
-
             let limits = await usageAPI.fetchUsage()
-
-            // Record analytics
-            if let limits = limits {
-                await analyticsStore.recordSnapshot(
-                    fiveHour: limits.fiveHourUtilization,
-                    sevenDay: limits.sevenDayUtilization,
-                    opus: limits.opusUtilization
-                )
-
-                await analyticsStore.recordDailyStats(tokens: todayTokens, sessions: todaySessions)
-            }
-
-            // Load analytics data
-            let allSnapshots = await analyticsStore.getAllSnapshots()
-            let today = await analyticsStore.getTodayStats()
-            let week = await analyticsStore.getWeekStats()
 
             await MainActor.run {
                 self.usageLimits = limits
-                self.snapshots = allSnapshots
-                self.todayStats = today
-                self.weekStats = week
                 self.isLoading = false
                 self.isRefreshing = false
 
@@ -243,6 +215,9 @@ final class UsageViewModel {
                     var extraInfo: [String: String] = [:]
                     if limits.opusUtilization > 0 || limits.opusResetsAt != nil {
                         extraInfo["opusUtilization"] = String(format: "%.0f", limits.opusUtilization)
+                    }
+                    if limits.fableUtilization > 0 || limits.fableResetsAt != nil {
+                        extraInfo["fableUtilization"] = String(format: "%.0f", limits.fableUtilization)
                     }
 
                     self.providerUsages["claude"] = ProviderUsage(
@@ -305,39 +280,13 @@ final class UsageViewModel {
         }
     }
 
-    private static func todayTokens(in sessions: [SessionInfo]) -> Int {
-        let calendar = Calendar.current
-        let today = calendar.startOfDay(for: Date())
+    /// Copies a shell command that resumes the session in its project directory.
+    func copyResumeCommand(for session: SessionInfo) {
+        // Single-quote the path so spaces and shell metacharacters survive pasting
+        let quotedPath = "'" + session.projectPath.replacingOccurrences(of: "'", with: "'\\''") + "'"
+        let command = "cd \(quotedPath) && claude --resume \(session.id)"
 
-        return sessions
-            .filter { calendar.startOfDay(for: $0.timestamp) == today }
-            .reduce(0) { $0 + $1.totalTokens }
-    }
-
-    private static func todaySessionCount(in sessions: [SessionInfo]) -> Int {
-        let calendar = Calendar.current
-        let today = calendar.startOfDay(for: Date())
-
-        return sessions
-            .filter { calendar.startOfDay(for: $0.timestamp) == today }
-            .count
-    }
-
-    func openSession(_ session: SessionInfo) {
-        let cmd = "cd \"\(session.projectPath)\" && claude --resume \(session.id)"
-        let script = "tell application \"Terminal\" to do script \"\(cmd)\""
-
-        if let appleScript = NSAppleScript(source: script) {
-            var error: NSDictionary?
-            appleScript.executeAndReturnError(&error)
-        }
-    }
-
-    func openClaude() {
-        let script = "tell application \"Terminal\" to do script \"claude\""
-        if let appleScript = NSAppleScript(source: script) {
-            var error: NSDictionary?
-            appleScript.executeAndReturnError(&error)
-        }
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(command, forType: .string)
     }
 }

@@ -45,13 +45,20 @@ actor UsageAPIClient {
     }
 
     private func parseResponse(_ response: UsageAPIResponse) -> UsageLimits {
-        UsageLimits(
+        // Fable has no top-level key; it only appears as a model-scoped weekly limit
+        let fable = response.limits?.first {
+            $0.kind == "weekly_scoped" && $0.scope?.model?.displayName == "Fable"
+        }
+
+        return UsageLimits(
             fiveHourUtilization: response.fiveHour?.utilization ?? 0,
             fiveHourResetsAt: parseResetTime(response.fiveHour?.resetsAt),
             sevenDayUtilization: response.sevenDay?.utilization ?? 0,
             sevenDayResetsAt: parseResetTime(response.sevenDay?.resetsAt),
             opusUtilization: response.sevenDayOpus?.utilization ?? 0,
-            opusResetsAt: parseResetTime(response.sevenDayOpus?.resetsAt)
+            opusResetsAt: parseResetTime(response.sevenDayOpus?.resetsAt),
+            fableUtilization: fable?.percent ?? 0,
+            fableResetsAt: parseResetTime(fable?.resetsAt)
         )
     }
 
@@ -73,11 +80,37 @@ private struct UsageAPIResponse: Codable {
     let fiveHour: UsagePeriod?
     let sevenDay: UsagePeriod?
     let sevenDayOpus: UsagePeriod?
+    let limits: [UsageLimitEntry]?
 
     enum CodingKeys: String, CodingKey {
         case fiveHour = "five_hour"
         case sevenDay = "seven_day"
         case sevenDayOpus = "seven_day_opus"
+        case limits
+    }
+}
+
+private struct UsageLimitEntry: Codable {
+    let kind: String?
+    let percent: Double?
+    let resetsAt: String?
+    let scope: LimitScope?
+
+    enum CodingKeys: String, CodingKey {
+        case kind, percent, scope
+        case resetsAt = "resets_at"
+    }
+}
+
+private struct LimitScope: Codable {
+    let model: ScopedModel?
+}
+
+private struct ScopedModel: Codable {
+    let displayName: String?
+
+    enum CodingKeys: String, CodingKey {
+        case displayName = "display_name"
     }
 }
 

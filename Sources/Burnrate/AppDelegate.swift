@@ -7,7 +7,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var popover: NSPopover!
     private var viewModel = UsageViewModel()
     private var eventMonitor: Any?
-    private var analyticsWindow: NSWindow?
     private var settingsWindow: NSWindow?
 
     // Sparkle updater controller (only available when running as bundled .app)
@@ -48,24 +47,24 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         // Create the popover
         popover = NSPopover()
-        popover.contentSize = NSSize(width: 340, height: 580)
         popover.behavior = .transient
         popover.animates = true
         popover.delegate = self
-        popover.contentViewController = NSHostingController(
+        let hostingController = NSHostingController(
             rootView: ContentView(
                 viewModel: viewModel,
                 onQuit: { [weak self] in
                     self?.quit()
-                },
-                onShowAnalytics: { [weak self] in
-                    self?.showAnalyticsWindow()
                 },
                 onShowSettings: { [weak self] in
                     self?.showSettingsWindow()
                 }
             )
         )
+        // Size the popover to the SwiftUI content so it grows and shrinks
+        // as sections expand and collapse
+        hostingController.sizingOptions = .preferredContentSize
+        popover.contentViewController = hostingController
 
         // Start auto-refresh
         NSLog("[DEBUG] Starting auto-refresh...")
@@ -134,41 +133,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         popover.performClose(nil)
     }
 
-    private func showAnalyticsWindow() {
-        // Close popover first
-        closePopover()
-
-        // If window already exists, just bring it to front
-        if let window = analyticsWindow {
-            window.makeKeyAndOrderFront(nil)
-            NSApp.activate(ignoringOtherApps: true)
-            return
-        }
-
-        // Create analytics window
-        let analyticsView = AnalyticsView(
-            snapshots: viewModel.snapshots,
-            todayStats: viewModel.todayStats,
-            weekStats: viewModel.weekStats
-        )
-
-        let hostingController = NSHostingController(rootView: analyticsView)
-
-        let window = NSWindow(contentViewController: hostingController)
-        window.title = "Burnrate analytics"
-        window.styleMask = [.titled, .closable, .miniaturizable, .resizable]
-        window.setContentSize(NSSize(width: 400, height: 550))
-        window.center()
-        window.isReleasedWhenClosed = false
-
-        // Clean up reference when window closes
-        window.delegate = self
-
-        analyticsWindow = window
-        window.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
-    }
-
     private func showSettingsWindow() {
         // Close popover first
         closePopover()
@@ -228,9 +192,7 @@ extension AppDelegate: NSWindowDelegate {
     func windowWillClose(_ notification: Notification) {
         guard let window = notification.object as? NSWindow else { return }
 
-        if window == analyticsWindow {
-            analyticsWindow = nil
-        } else if window == settingsWindow {
+        if window == settingsWindow {
             settingsWindow = nil
         }
     }

@@ -11,7 +11,6 @@ Features:
 - API usage limits (5-hour, 7-day, Opus) with visual progress bars
 - Recent sessions with quick-resume capability
 - Usage alerts at 80% and 90% thresholds
-- Analytics dashboard with historical trends
 - Customizable menubar display
 - Settings window with tabbed interface
 
@@ -56,7 +55,6 @@ burnrate/
     │   ├── UsageAPIClient.swift    # Fetches from Anthropic API (actor)
     │   ├── KeychainService.swift   # Reads OAuth token via security CLI
     │   ├── NotificationService.swift  # macOS notifications for usage alerts
-    │   ├── AnalyticsStore.swift    # Persistent storage for usage history
     │   └── SettingsService.swift   # User preferences (menubar display, etc.)
     │
     └── Views/
@@ -64,7 +62,6 @@ burnrate/
         ├── UsageLimitsView.swift
         ├── ExtraUsageView.swift
         ├── RecentSessionsView.swift
-        ├── AnalyticsView.swift     # Charts using SwiftUI Charts
         ├── SettingsView.swift      # Tabbed settings (General, Alerts, About)
         ├── AlertSettingsView.swift
         └── ProgressBarView.swift
@@ -75,7 +72,6 @@ burnrate/
 - `UsageAPIClient` is an `actor` for thread-safe API caching
 - `SessionParser` uses streaming `FileHandle` reads to handle large session files (>10MB)
 - `KeychainService` uses `/usr/bin/security` CLI for reliable keychain access
-- `AnalyticsStore` is an `actor` that persists data to `~/.burnrate/analytics.json`
 - `NotificationService` guards against unbundled execution for `UNUserNotificationCenter`
 
 ## Data Sources
@@ -92,10 +88,6 @@ burnrate/
    - OAuth token from Keychain service `Claude Code-credentials`
    - Returns `five_hour`, `seven_day`, `seven_day_opus` utilization
 
-4. **Analytics storage**: `~/.burnrate/analytics.json`
-   - Hourly usage snapshots (kept 30 days)
-   - Daily stats: tokens, sessions, estimated cost (kept 1 year)
-
 ## Key Implementation Details
 
 - Session files use streaming reads to handle multi-GB files without loading into memory
@@ -108,7 +100,6 @@ burnrate/
 
 ## Windows
 
-The app manages three window types:
+The app manages two window types:
 1. **Popover** - Main UI, attached to menubar icon
-2. **Analytics Window** - Separate window for charts and stats
-3. **Settings Window** - Tabbed preferences (General, Alerts, About)
+2. **Settings Window** - Tabbed preferences (General, Alerts, About)

@@ -22,7 +22,6 @@ Version **0.2.1-beta** simplifies the provider menu to Claude and Codex and uses
 - **Current Session Info**: See token count and message count for your active session
 - **Recent Sessions**: Quick access to your 8 most recent sessions with one-click resume
 - **Usage Alerts**: Get notified when usage crosses 80% or 90% thresholds
-- **Analytics Dashboard**: View historical usage trends with charts (24h, 7d, 30d)
 - **Customizable Menubar**: Choose what to display (5-hour %, 7-day %, both, or icon only)
 - **Settings Window**: Tabbed interface for General, Alerts, and About settings
 - **Auto-refresh**: Data updates every 60 seconds automatically
@@ -95,14 +94,12 @@ burnrate/
 │   │   ├── UsageAPIClient.swift    # Anthropic API client
 │   │   ├── KeychainService.swift   # OAuth token access
 │   │   ├── NotificationService.swift  # Usage alerts
-│   │   ├── AnalyticsStore.swift    # Historical data storage
 │   │   └── SettingsService.swift   # User preferences
 │   └── Views/
 │       ├── CurrentSessionView.swift
 │       ├── UsageLimitsView.swift
 │       ├── ExtraUsageView.swift
 │       ├── RecentSessionsView.swift
-│       ├── AnalyticsView.swift     # Charts & trends
 │       ├── SettingsView.swift      # Tabbed settings
 │       ├── AlertSettingsView.swift
 │       └── ProgressBarView.swift
@@ -118,8 +115,6 @@ The app reads data from three sources:
 2. **Account Config** (`~/.claude.json`): Your account settings including extra usage status
 3. **Anthropic API**: Real-time usage limits fetched using your OAuth token from the macOS Keychain
 
-Analytics data is stored locally in `~/.burnrate/analytics.json`.
-
 ## Development
 
 The app and menu bar use `icon/fire.png`. After replacing it, run `bash scripts/update-icons.sh` to regenerate the app icon and bundled image.
@@ -130,7 +125,6 @@ Key files:
 - `Services/SessionParser.swift` - Streaming JSONL parser (handles large files efficiently)
 - `Services/KeychainService.swift` - Reads OAuth token via `security` CLI
 - `Services/UsageAPIClient.swift` - Fetches usage from Anthropic API
-- `Services/AnalyticsStore.swift` - Persists usage snapshots and daily stats
 - `Services/NotificationService.swift` - Handles macOS notifications for alerts
 
 To modify the UI, edit files in `Views/`. The app uses standard SwiftUI components. Debug builds include design-time previews and require the full Xcode toolchain; release builds can use the Swift command-line tools.

@@ -4,29 +4,63 @@ struct RecentSessionsView: View {
     let sessions: [SessionInfo]
     let onSessionTap: (SessionInfo) -> Void
 
-    var body: some View {
-        VStack(alignment: .leading, spacing: BurnrateTheme.spacingMD) {
-            SectionHeader(
-                title: "Recent",
-                icon: "clock.fill",
-                iconColor: BurnrateTheme.statusYellow
-            )
+    @AppStorage("recentSessionsExpanded") private var isExpanded = false
 
-            if sessions.isEmpty {
-                EmptyStateView(
-                    icon: "tray",
-                    message: "No recent sessions"
-                )
-            } else {
-                VStack(spacing: BurnrateTheme.spacingXS) {
-                    ForEach(sessions.prefix(5)) { session in
-                        SessionRowView(session: session)
-                            .contentShape(Rectangle())
-                            .onTapGesture {
-                                onSessionTap(session)
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Button {
+                withAnimation(BurnrateTheme.springSnappy) {
+                    isExpanded.toggle()
+                }
+            } label: {
+                HStack(spacing: BurnrateTheme.spacingSM) {
+                    SectionHeader(
+                        title: "Recent",
+                        icon: "clock.fill",
+                        iconColor: BurnrateTheme.statusYellow
+                    )
+
+                    Spacer()
+
+                    if !sessions.isEmpty {
+                        Text("\(min(sessions.count, 5))")
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundStyle(BurnrateTheme.textTertiary)
+                    }
+
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundStyle(BurnrateTheme.textTertiary)
+                        .rotationEffect(.degrees(isExpanded ? 90 : 0))
+                        .animation(BurnrateTheme.springSnappy, value: isExpanded)
+                }
+                .padding(.vertical, BurnrateTheme.spacingXS)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            if isExpanded {
+                Group {
+                    if sessions.isEmpty {
+                        EmptyStateView(
+                            icon: "tray",
+                            message: "No recent sessions"
+                        )
+                    } else {
+                        VStack(spacing: BurnrateTheme.spacingXS) {
+                            ForEach(sessions.prefix(5)) { session in
+                                SessionRowView(session: session)
+                                    .contentShape(Rectangle())
+                                    .onTapGesture {
+                                        onSessionTap(session)
+                                    }
+                                    .help("Copy resume command")
                             }
+                        }
                     }
                 }
+                .padding(.top, BurnrateTheme.spacingSM)
+                .transition(.opacity)
             }
         }
     }
@@ -38,9 +72,9 @@ struct SessionRowView: View {
 
     var body: some View {
         HStack(spacing: BurnrateTheme.spacingMD) {
-            // Play icon
-            Image(systemName: "play.fill")
-                .font(.system(size: 8, weight: .bold))
+            // Copy icon
+            Image(systemName: "doc.on.doc")
+                .font(.system(size: 9, weight: .bold))
                 .foregroundStyle(isHovered ? Color.white : BurnrateTheme.textTertiary)
                 .frame(width: 20, height: 20)
                 .background(
@@ -74,13 +108,6 @@ struct SessionRowView: View {
             }
 
             Spacer()
-
-            // Chevron
-            Image(systemName: "chevron.right")
-                .font(.system(size: 10, weight: .semibold))
-                .foregroundStyle(BurnrateTheme.textTertiary)
-                .opacity(isHovered ? 1 : 0)
-                .animation(BurnrateTheme.easeOut, value: isHovered)
         }
         .padding(.horizontal, BurnrateTheme.spacingMD)
         .padding(.vertical, BurnrateTheme.spacingSM)

@@ -140,32 +140,6 @@ struct SectionHeader: View {
     }
 }
 
-// MARK: - Action Button Style
-
-struct ActionButtonStyle: ButtonStyle {
-    @State private var isHovered = false
-    var isDestructive = false
-
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .font(.system(size: 12, weight: .medium))
-            .foregroundStyle(isDestructive ? BurnrateTheme.textTertiary : BurnrateTheme.textSecondary)
-            .padding(.horizontal, BurnrateTheme.spacingMD)
-            .padding(.vertical, BurnrateTheme.spacingSM)
-            .background(
-                RoundedRectangle(cornerRadius: BurnrateTheme.radiusSM)
-                    .fill(isHovered ? BurnrateTheme.cardBackgroundHover : BurnrateTheme.cardBackground)
-            )
-            .scaleEffect(configuration.isPressed ? 0.96 : 1.0)
-            .animation(BurnrateTheme.easeOut, value: configuration.isPressed)
-            .onHover { hovering in
-                withAnimation(BurnrateTheme.easeOut) {
-                    isHovered = hovering
-                }
-            }
-    }
-}
-
 // MARK: - Icon Button Style
 
 struct IconButtonStyle: ButtonStyle {

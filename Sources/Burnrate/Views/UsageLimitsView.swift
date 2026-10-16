@@ -33,6 +33,14 @@ struct UsageLimitsView: View {
                             resetsAt: limits.opusResetsAt
                         )
                     }
+
+                    if limits.fableUtilization > 0 || limits.fableResetsAt != nil {
+                        ProgressBarView(
+                            value: limits.fableUtilization,
+                            label: "Fable",
+                            resetsAt: limits.fableResetsAt
+                        )
+                    }
                 }
             } else if isTokenExpired {
                 TokenExpiredView()

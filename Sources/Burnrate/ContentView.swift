@@ -3,16 +3,17 @@ import SwiftUI
 struct ContentView: View {
     @Bindable var viewModel: UsageViewModel
     let onQuit: () -> Void
-    let onShowAnalytics: () -> Void
     let onShowSettings: () -> Void
 
     @State private var isRefreshing = false
+    @State private var scrollContentHeight: CGFloat = 0
+    @State private var showCopiedToast = false
+    @State private var toastDismissTask: Task<Void, Never>?
     @State private var expandedProviders: Set<String>
 
-    init(viewModel: UsageViewModel, onQuit: @escaping () -> Void, onShowAnalytics: @escaping () -> Void, onShowSettings: @escaping () -> Void) {
+    init(viewModel: UsageViewModel, onQuit: @escaping () -> Void, onShowSettings: @escaping () -> Void) {
         self.viewModel = viewModel
         self.onQuit = onQuit
-        self.onShowAnalytics = onShowAnalytics
         self.onShowSettings = onShowSettings
 
         // Load persisted expansion state, default to all expanded
@@ -28,7 +29,20 @@ struct ContentView: View {
             // Header
             HeaderView(
                 isLoading: viewModel.isLoading,
-                onSettings: onShowSettings
+                isRefreshing: isRefreshing,
+                onRefresh: {
+                    withAnimation(BurnrateTheme.springSnappy) {
+                        isRefreshing = true
+                    }
+                    viewModel.refresh()
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        withAnimation(BurnrateTheme.springSnappy) {
+                            isRefreshing = false
+                        }
+                    }
+                },
+                onSettings: onShowSettings,
+                onQuit: onQuit
             )
             .padding(.horizontal, BurnrateTheme.spacingLG)
             .padding(.top, BurnrateTheme.spacingLG)
@@ -66,46 +80,32 @@ struct ContentView: View {
                     RecentSessionsView(
                         sessions: viewModel.recentSessions,
                         onSessionTap: { session in
-                            viewModel.openSession(session)
+                            viewModel.copyResumeCommand(for: session)
+                            showCopiedConfirmation()
                         }
                     )
                 }
                 .padding(.horizontal, BurnrateTheme.spacingLG)
                 .padding(.bottom, BurnrateTheme.spacingMD)
+                .onGeometryChange(for: CGFloat.self) { proxy in
+                    proxy.size.height
+                } action: { height in
+                    scrollContentHeight = height
+                }
             }
             .scrollIndicators(.never)
-
-            // Footer Actions
-            FooterActionsView(
-                onOpenClaude: { viewModel.openClaude() },
-                onRefresh: {
-                    withAnimation(BurnrateTheme.springSnappy) {
-                        isRefreshing = true
-                    }
-                    viewModel.refresh()
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                        withAnimation(BurnrateTheme.springSnappy) {
-                            isRefreshing = false
-                        }
-                    }
-                },
-                onAnalytics: onShowAnalytics,
-                onQuit: onQuit,
-                isRefreshing: isRefreshing
-            )
-            .padding(BurnrateTheme.spacingLG)
-            .background(
-                Rectangle()
-                    .fill(BurnrateTheme.surfaceSecondary)
-                    .overlay(alignment: .top) {
-                        Rectangle()
-                            .fill(BurnrateTheme.cardBorder)
-                            .frame(height: 1)
-                    }
-            )
+            // Fit the content; scroll only once it outgrows the screen
+            .frame(height: min(scrollContentHeight, maxScrollHeight))
         }
         .frame(width: 340)
         .background(Color(NSColor.windowBackgroundColor))
+        .overlay(alignment: .bottom) {
+            if showCopiedToast {
+                CopiedToast()
+                    .padding(.bottom, BurnrateTheme.spacingLG)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+        }
         .environment(\.isPopoverVisible, viewModel.isPopoverVisible)
         .onChange(of: expandedProviders) { _, newValue in
             UserDefaults.standard.set(Array(newValue), forKey: "expandedProviders")
@@ -123,6 +123,25 @@ struct ContentView: View {
                 }
             }
         )
+    }
+
+    private var maxScrollHeight: CGFloat {
+        // Leave room for the menu bar, the popover arrow, and the header
+        (NSScreen.main?.visibleFrame.height ?? 800) - 120
+    }
+
+    private func showCopiedConfirmation() {
+        toastDismissTask?.cancel()
+        withAnimation(BurnrateTheme.springSnappy) {
+            showCopiedToast = true
+        }
+        toastDismissTask = Task { @MainActor in
+            try? await Task.sleep(for: .seconds(1.5))
+            guard !Task.isCancelled else { return }
+            withAnimation(BurnrateTheme.easeOut) {
+                showCopiedToast = false
+            }
+        }
     }
 
     /// Provides extra inline content for specific providers
@@ -144,6 +163,18 @@ struct ContentView: View {
                         value: limits.opusUtilization,
                         label: "Opus",
                         resetsAt: limits.opusResetsAt
+                    )
+                ))
+            }
+
+            // Fable usage bar if active
+            if let limits = viewModel.usageLimits,
+               (limits.fableUtilization > 0 || limits.fableResetsAt != nil) {
+                views.append(AnyView(
+                    ProgressBarView(
+                        value: limits.fableUtilization,
+                        label: "Fable",
+                        resetsAt: limits.fableResetsAt
                     )
                 ))
             }
@@ -171,7 +202,10 @@ struct ContentView: View {
 
 struct HeaderView: View {
     let isLoading: Bool
+    let isRefreshing: Bool
+    let onRefresh: () -> Void
     let onSettings: () -> Void
+    let onQuit: () -> Void
 
     // The bobbing flame runs only while the popover is on screen. A repeating
     // animation left running in the closed popover keeps SwiftUI rendering the
@@ -228,12 +262,52 @@ struct HeaderView: View {
                     .frame(width: 20, height: 20)
             }
 
-            // Settings button
+            Button(action: onRefresh) {
+                Image(systemName: "arrow.clockwise")
+                    .rotationEffect(.degrees(isRefreshing ? 360 : 0))
+                    .animation(
+                        isRefreshing ? .linear(duration: 0.5) : .default,
+                        value: isRefreshing
+                    )
+            }
+            .buttonStyle(IconButtonStyle())
+
             Button(action: onSettings) {
                 Image(systemName: "gearshape.fill")
             }
             .buttonStyle(IconButtonStyle())
+
+            Button(action: onQuit) {
+                Image(systemName: "power")
+            }
+            .buttonStyle(IconButtonStyle())
         }
+    }
+}
+
+// MARK: - Copied Toast
+
+struct CopiedToast: View {
+    var body: some View {
+        HStack(spacing: BurnrateTheme.spacingSM) {
+            Image(systemName: "checkmark.circle.fill")
+                .foregroundStyle(BurnrateTheme.statusGreen)
+
+            Text("Resume command copied")
+                .foregroundStyle(BurnrateTheme.textPrimary)
+        }
+        .font(.system(size: 12, weight: .medium))
+        .padding(.horizontal, BurnrateTheme.spacingMD)
+        .padding(.vertical, BurnrateTheme.spacingSM)
+        .background(
+            Capsule()
+                .fill(.regularMaterial)
+                .overlay(
+                    Capsule()
+                        .strokeBorder(BurnrateTheme.cardBorder, lineWidth: 1)
+                )
+        )
+        .shadow(color: .black.opacity(0.15), radius: 8, y: 2)
     }
 }
 
@@ -263,47 +337,6 @@ struct ErrorBanner: View {
                         .strokeBorder(BurnrateTheme.statusOrange.opacity(0.2), lineWidth: 1)
                 )
         )
-    }
-}
-
-// MARK: - Footer Actions
-
-struct FooterActionsView: View {
-    let onOpenClaude: () -> Void
-    let onRefresh: () -> Void
-    let onAnalytics: () -> Void
-    let onQuit: () -> Void
-    let isRefreshing: Bool
-
-    var body: some View {
-        HStack(spacing: BurnrateTheme.spacingSM) {
-            Button(action: onOpenClaude) {
-                Label("Claude", systemImage: "terminal.fill")
-            }
-            .buttonStyle(ActionButtonStyle())
-
-            Button(action: onRefresh) {
-                Image(systemName: "arrow.clockwise")
-                    .rotationEffect(.degrees(isRefreshing ? 360 : 0))
-                    .animation(
-                        isRefreshing ? .linear(duration: 0.5) : .default,
-                        value: isRefreshing
-                    )
-            }
-            .buttonStyle(ActionButtonStyle())
-
-            Button(action: onAnalytics) {
-                Label("Analytics", systemImage: "chart.xyaxis.line")
-            }
-            .buttonStyle(ActionButtonStyle())
-
-            Spacer()
-
-            Button(action: onQuit) {
-                Image(systemName: "power")
-            }
-            .buttonStyle(ActionButtonStyle(isDestructive: true))
-        }
     }
 }
 
@@ -359,7 +392,6 @@ struct FooterActionsView: View {
             return vm
         }(),
         onQuit: {},
-        onShowAnalytics: {},
         onShowSettings: {}
     )
 }

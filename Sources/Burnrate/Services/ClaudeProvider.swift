@@ -25,7 +25,7 @@ final class ClaudeProvider: LLMProvider {
     static func mapUsage(_ limits: UsageLimits) -> ProviderUsage {
         var extra: [String: String]? = nil
         if limits.opusUtilization > 0 {
-            extra = ["Opus": "\(Int(limits.opusUtilization * 100))%"]
+            extra = ["Opus": "\(Int(limits.opusUtilization))%"]
         }
 
         return ProviderUsage(
